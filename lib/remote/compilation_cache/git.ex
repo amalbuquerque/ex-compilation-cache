@@ -15,7 +15,7 @@ defmodule Remote.CompilationCache.Git do
   It will return a list with tuples, e.g.:
 
   ```
-  iex()>   Remote.CompilationCache.Git.current_changes()
+  iex()> Remote.CompilationCache.Git.current_changes()
   [
     {"?", "20240212_after_30000_compilation_succeeded.output"},
     {"?", "Callback_CAT.crt"},
