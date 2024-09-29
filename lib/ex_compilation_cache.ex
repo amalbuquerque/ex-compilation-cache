@@ -1,4 +1,4 @@
-defmodule Remote.CompilationCache do
+defmodule ExCompilationCache do
   @moduledoc """
   Compilation cache is responsible for:
     1. Creating a build cache of the current compilation if it matches a specific "upstream" commit;
