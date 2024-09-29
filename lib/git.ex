@@ -6,7 +6,10 @@ defmodule ExCompilationCache.Git do
 
   @current_changes_args ~w[ls-files --others --modified --deleted --exclude-standard -t]
   @latest_commit_args ~w[show HEAD --pretty=oneline --no-abbrev-commit]
-  @branches_for_commit_args ~w[branch --contains commit]
+  @branches_for_commit_args ~w[branch -a --contains <commit>]
+
+  @type commit :: String.t()
+  @type branch :: String.t()
 
   @doc """
   Use it like this:
@@ -55,12 +58,40 @@ defmodule ExCompilationCache.Git do
     end)
   end
 
-  def latest_commit_and_branches do
-    latest_commit = latest_commit()
+  @doc """
+  It will check the latest 20 commits and return the first commit (starting from HEAD) which also exists in the remote
+  branch (usually `origin/main` or `origin/master`).
 
-    branches = branches(latest_commit)
+  Use it like this:
 
-    {latest_commit, branches}
+  ```
+  ExCompilationCache.Git.latest_commit_also_present_in_remote()
+  ExCompilationCache.Git.latest_commit_also_present_in_remote("origin/master")
+  ```
+  """
+  @spec latest_commit_also_present_in_remote(String.t(), non_neg_integer()) :: {:ok, {commit(), [branch()]}} | {:error, :origin_commit_not_found}
+  def latest_commit_also_present_in_remote(remote_branch_name \\ "origin/main", number_of_commits \\ 20) do
+    full_remote_branch_name = "remotes/#{remote_branch_name}"
+
+    result = Enum.reduce_while(0..(number_of_commits-1), nil, fn commit_number, _acc ->
+      commit_reference = "HEAD~#{commit_number}"
+
+      branches = branches(commit_reference)
+
+      if(full_remote_branch_name in branches) do
+        {:halt, {commit_hash(commit_reference), branches}}
+      else
+        {:cont, nil}
+      end
+    end)
+
+    case result do
+      nil ->
+        {:error, :origin_commit_not_found}
+
+      result ->
+        {:ok, result}
+    end
   end
 
   @doc """
@@ -68,6 +99,10 @@ defmodule ExCompilationCache.Git do
 
   ```
   ExCompilationCache.Git.branches("HEAD")
+  ExCompilationCache.Git.branches("HEAD~3")
+
+  commit = ExCompilationCache.Git.latest_commit()
+  ExCompilationCache.Git.branches(commit)
   ```
 
   It will return a list of branches with the given commit.
@@ -76,7 +111,7 @@ defmodule ExCompilationCache.Git do
     args =
       @branches_for_commit_args
       |> Enum.map(fn
-        "commit" -> commit
+        "<commit>" -> commit
         arg -> arg
       end)
 
@@ -97,13 +132,38 @@ defmodule ExCompilationCache.Git do
   Use it like this:
 
   ```
-  ExCompilationCache.Git.latest_commit()
+  ExCompilationCache.Git.latest_commit_hash()
   ```
 
   It will return the current commit hash.
   """
-  def latest_commit do
+  def latest_commit_hash do
     {output, 0} = System.cmd("git", @latest_commit_args)
+
+    [commit | _] = String.split(output, "\s", trim: true)
+
+    commit
+  end
+
+  @doc """
+  Use it like this:
+
+  ```
+  ExCompilationCache.Git.commit_hash("HEAD~1")
+  ```
+
+  It will return the given commit hash.
+  """
+  def commit_hash(reference) do
+    commit_args = Enum.map(@latest_commit_args, fn
+      "HEAD" ->
+        reference
+
+      arg ->
+        arg
+    end)
+
+    {output, 0} = System.cmd("git", commit_args)
 
     [commit | _] = String.split(output, "\s", trim: true)
 
