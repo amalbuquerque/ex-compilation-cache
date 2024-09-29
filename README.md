@@ -1,16 +1,16 @@
-# CompilationCache
+# ExCompilationCache
 
 **TODO: Add description**
 
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `compilation_cache` to your list of dependencies in `mix.exs`:
+by adding `ex_compilation_cache` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:compilation_cache, "~> 0.1.0"}
+    {:ex_compilation_cache, "~> 0.1.0"}
   ]
 end
 ```
