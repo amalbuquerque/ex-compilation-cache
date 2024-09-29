@@ -1,4 +1,4 @@
-defmodule Remote.CompilationCache.BuildCache do
+defmodule ExCompilationCache.BuildCache do
   @moduledoc """
   Struct representing a build cache.
   """
@@ -6,11 +6,11 @@ defmodule Remote.CompilationCache.BuildCache do
   use TypedStruct
 
   typedstruct do
-    field :architecture, atom()
-    field :operating_system, atom()
-    field :mix_env, atom()
-    field :commit_hash, String.t()
-    field :timestamp, DateTime.t()
+    field(:architecture, atom())
+    field(:operating_system, atom())
+    field(:mix_env, atom())
+    field(:commit_hash, String.t())
+    field(:timestamp, DateTime.t())
   end
 
   @cacheable_architectures [:aarm64, :x86_64]
@@ -25,9 +25,9 @@ defmodule Remote.CompilationCache.BuildCache do
   end
 
   def new(architecture, operating_system, mix_env, commit_hash)
-    when architecture in @cacheable_architectures and
-      operating_system in @cacheable_operating_systems and
-      mix_env in @cacheable_mix_envs do
+      when architecture in @cacheable_architectures and
+             operating_system in @cacheable_operating_systems and
+             mix_env in @cacheable_mix_envs do
     %__MODULE__{
       architecture: architecture,
       operating_system: operating_system,

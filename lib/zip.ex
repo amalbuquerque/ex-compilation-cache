@@ -1,4 +1,4 @@
-defmodule Remote.CompilationCache.Zip do
+defmodule ExCompilationCache.Zip do
   @moduledoc """
   This module provides functionality to zip and unzip a folder with password.
   """
@@ -11,23 +11,24 @@ defmodule Remote.CompilationCache.Zip do
   Use it like this:
 
   ```
-  Remote.CompilationCache.Zip.zip_directory("_build/dev", "dev_cache.zip", "12345")
+  ExCompilationCache.Zip.zip_directory("_build/dev", "dev_cache.zip", "12345")
   ```
   """
   def zip_directory(folder_path, archive_file_path, password) do
-    args = Enum.map(@zip_args, fn
-      "<password>" ->
-        password
+    args =
+      Enum.map(@zip_args, fn
+        "<password>" ->
+          password
 
-      "<archive_file_path>" ->
-        maybe_add_zip_extension(archive_file_path)
+        "<archive_file_path>" ->
+          maybe_add_zip_extension(archive_file_path)
 
-      "<folder_path>" ->
-        folder_path
+        "<folder_path>" ->
+          folder_path
 
-      arg ->
-        arg
-    end)
+        arg ->
+          arg
+      end)
 
     ensure_file_exists!(folder_path, "Folder to zip")
 
@@ -44,24 +45,25 @@ defmodule Remote.CompilationCache.Zip do
   Use it like this:
 
   ```
-  Remote.CompilationCache.Zip.unzip_to("dev_cache.zip", "temp/foo", "12345")
-  Remote.CompilationCache.Zip.unzip_to("dev_cache.zip", ".", "12345")
+  ExCompilationCache.Zip.unzip_to("dev_cache.zip", "temp/foo", "12345")
+  ExCompilationCache.Zip.unzip_to("dev_cache.zip", ".", "12345")
   ```
   """
   def unzip_to(archive_file_path, target_path, password) do
-    args = Enum.map(@unzip_args, fn
-      "<password>" ->
-        password
+    args =
+      Enum.map(@unzip_args, fn
+        "<password>" ->
+          password
 
-      "<archive_file_path>" ->
-        maybe_add_zip_extension(archive_file_path)
+        "<archive_file_path>" ->
+          maybe_add_zip_extension(archive_file_path)
 
-      "<target_path>" ->
-        target_path
+        "<target_path>" ->
+          target_path
 
-      arg ->
-        arg
-    end)
+        arg ->
+          arg
+      end)
 
     ensure_file_exists!(archive_file_path, "Archive to unzip")
     ensure_file_exists!(target_path, "Target folder")

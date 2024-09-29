@@ -1,6 +1,7 @@
-defmodule Remote.CompilationCache.Git do
+defmodule ExCompilationCache.Git do
   @moduledoc """
-  This module encapsulates Git commands that we need to check if the current code "snapshot" is cacheable or not.
+  This module encapsulates Git commands that we need to use to identify the commit to which
+  it will associate the compilation "snapshot".
   """
 
   @current_changes_args ~w[ls-files --others --modified --deleted --exclude-standard -t]
@@ -10,12 +11,12 @@ defmodule Remote.CompilationCache.Git do
   @doc """
   Use it like this:
 
-  Remote.CompilationCache.Git.current_changes()
+  ExCompilationCache.Git.current_changes()
 
   It will return a list with tuples, e.g.:
 
   ```
-  iex()> Remote.CompilationCache.Git.current_changes()
+  iex()> ExCompilationCache.Git.current_changes()
   [
     {"?", "20240212_after_30000_compilation_succeeded.output"},
     {"?", "Callback_CAT.crt"},
@@ -50,7 +51,7 @@ defmodule Remote.CompilationCache.Git do
       <<mode::8>> <> " " <> file_path ->
         mode_str = to_string([mode])
 
-      [{mode_str, file_path}]
+        [{mode_str, file_path}]
     end)
   end
 
@@ -58,19 +59,22 @@ defmodule Remote.CompilationCache.Git do
     latest_commit = latest_commit()
 
     branches = branches(latest_commit)
+
+    {latest_commit, branches}
   end
 
   @doc """
   Use it like this:
 
   ```
-  Remote.CompilationCache.Git.branches("HEAD")
+  ExCompilationCache.Git.branches("HEAD")
   ```
 
-  It will return a list of branches with the current commit.
+  It will return a list of branches with the given commit.
   """
   def branches(commit) do
-    args = @branches_for_commit_args
+    args =
+      @branches_for_commit_args
       |> Enum.map(fn
         "commit" -> commit
         arg -> arg
@@ -83,6 +87,7 @@ defmodule Remote.CompilationCache.Git do
     |> Enum.map(fn
       "* " <> current_branch ->
         current_branch
+
       other_branch ->
         String.trim(other_branch)
     end)
@@ -92,7 +97,7 @@ defmodule Remote.CompilationCache.Git do
   Use it like this:
 
   ```
-  Remote.CompilationCache.Git.latest_commit()
+  ExCompilationCache.Git.latest_commit()
   ```
 
   It will return the current commit hash.
