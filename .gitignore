@@ -26,3 +26,5 @@ compilation_cache-*.tar
 /tmp/
 
 tags
+
+lib/s3_backend.ex
