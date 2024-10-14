@@ -7,7 +7,7 @@ defmodule ExCompilationCache.Zip do
 
   # note that we don't try to compress any file to speed up compress/decompress time
   @zip_args ~w[<archive_file_path> --password <password> -r <folder_path> --quiet -0]
-  @unzip_args ~w[-P <password> -qq <archive_file_path> -d <target_path>]
+  @unzip_args ~w[-P <password> -qq -o <archive_file_path> -d <target_path>]
 
   @doc """
   Use it like this:
