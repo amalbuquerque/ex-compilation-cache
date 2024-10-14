@@ -4,6 +4,8 @@ defmodule ExCompilationCache.Behaviours.CacheBackend do
   to be used as a compilation cache.
   """
 
+  alias ExCompilationCache.BuildCache
+
   @doc """
   Function that will be called before trying to upload a compilation artifact.
 
@@ -26,11 +28,16 @@ defmodule ExCompilationCache.Behaviours.CacheBackend do
   @callback upload_cache_artifact(local_path :: String.t(), artifact_remote_path :: String.t()) :: {:ok, term()} | {:error, term()}
 
   @doc """
-  Function that will be called to download a compilation artifact.
+  Function that will be called to download a compilation cache artifact.
 
   It receives the full remote path of the artifact and it should download the artifact to the local filesystem.
 
   It should return an :ok tuple with the full path of the downloaded compilation artifact, or an :error tuple.
   """
   @callback download_cache_artifact(artifact_remote_path :: String.t(), artifact_local_path :: String.t()) :: {:ok, String.t()} | {:error, term()}
+
+  @doc """
+  Function that returns a cache artifact if it exists in the remote storage.
+  """
+  @callback fetch_cache_artifact(local_artifact :: BuildCache.t()) :: {:ok, BuildCache.t()} | {:error, :remote_cache_artifact_not_found}
 end
