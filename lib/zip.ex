@@ -3,6 +3,8 @@ defmodule ExCompilationCache.Zip do
   This module provides functionality to zip and unzip a folder with password.
   """
 
+  require Logger
+
   # note that we don't try to compress any file to speed up compress/decompress time
   @zip_args ~w[<archive_file_path> --password <password> -r <folder_path> --quiet -0]
   @unzip_args ~w[-P <password> -qq <archive_file_path> -d <target_path>]
@@ -15,13 +17,15 @@ defmodule ExCompilationCache.Zip do
   ```
   """
   def zip_directory(folder_path, archive_file_path, password) do
+    archive_file_path = maybe_add_zip_extension(archive_file_path)
+
     args =
       Enum.map(@zip_args, fn
         "<password>" ->
           password
 
         "<archive_file_path>" ->
-          maybe_add_zip_extension(archive_file_path)
+          archive_file_path
 
         "<folder_path>" ->
           folder_path
@@ -34,7 +38,9 @@ defmodule ExCompilationCache.Zip do
 
     case System.cmd("zip", args) do
       {output, 0} ->
-        {:ok, output}
+        Logger.debug("[Zip] Successful zip! Output: #{inspect(output)}")
+
+        {:ok, archive_file_path}
 
       error_result ->
         {:error, error_result}

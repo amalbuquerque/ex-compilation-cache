@@ -59,7 +59,7 @@ defmodule ExCompilationCache.Git do
   end
 
   @doc """
-  It will check the latest 20 commits and return the first commit (starting from HEAD) which also exists in the remote
+  It will check the latest 200 commits and return the first commit (starting from HEAD) which also exists in the remote
   branch (usually `origin/main` or `origin/master`).
 
   Use it like this:
@@ -70,7 +70,7 @@ defmodule ExCompilationCache.Git do
   ```
   """
   @spec latest_commit_also_present_in_remote(String.t(), non_neg_integer()) :: {:ok, {commit(), [branch()]}} | {:error, :origin_commit_not_found}
-  def latest_commit_also_present_in_remote(remote_branch_name \\ "origin/main", number_of_commits \\ 20) do
+  def latest_commit_also_present_in_remote(remote_branch_name \\ "origin/main", number_of_commits \\ 200) do
     full_remote_branch_name = "remotes/#{remote_branch_name}"
 
     result = Enum.reduce_while(0..(number_of_commits-1), nil, fn commit_number, _acc ->
