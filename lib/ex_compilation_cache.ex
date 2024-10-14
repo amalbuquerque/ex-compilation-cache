@@ -22,6 +22,8 @@ defmodule ExCompilationCache do
   ```
   ExCompilationCache.create_and_upload_build_cache(:dev, "origin/main", "12345", ExCompilationCache.S3Backend)
   ```
+
+  ⚠️ TODO: Delete .zip after successful upload
   """
   def create_and_upload_build_cache(mix_env, remote_branch, zip_password, cache_backend) do
     with {:ok, build_directory} <- check_build_directory(mix_env),
@@ -79,8 +81,28 @@ defmodule ExCompilationCache do
     end
   end
 
-  def download_and_apply_cached_build do
-    :TODO
+  @doc """
+  Use it like this:
+
+  ```
+  ExCompilationCache.download_and_apply_cached_build(:dev, "origin/main", "12345", ExCompilationCache.S3Backend)
+  ```
+
+  ⚠️ TODO: Delete .zip after successful download
+  """
+  def download_and_apply_cached_build(mix_env, remote_branch, zip_password, cache_backend) do
+    with true <- current_code_includes_upstream_commit?(remote_branch),
+      {:ok, {commit_hash, _branches}} <- Git.latest_commit_also_present_in_remote(remote_branch),
+      local_artifact = BuildCache.new(mix_env, commit_hash),
+      {:ok, remote_artifact} <- cache_backend.fetch_cache_artifact(local_artifact),
+      remote_artifact_path = BuildCache.remote_artifact_path(remote_artifact, :zip),
+      :ok = File.mkdir_p("_build"),
+      artifact_name = BuildCache.artifact_name(remote_artifact, :zip),
+      local_artifact_path = Path.join("_build", artifact_name),
+      {:ok, _} <- cache_backend.download_cache_artifact(remote_artifact_path, local_artifact_path) do
+        # unzip to . since zip has _build/<mix_env> folder structure
+        Zip.unzip_to(local_artifact_path, ".", zip_password)
+      end
   end
 
   defp check_build_directory(mix_env) do
