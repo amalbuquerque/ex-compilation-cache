@@ -60,7 +60,7 @@ defmodule ExCompilationCache.BuildCache do
     timestamp
   end
 
-  def artifact_name(%__MODULE__{} = artifact) do
+  def artifact_name(%__MODULE__{} = artifact, extension \\ nil) do
     parts = [
       artifact.architecture,
       artifact.operating_system,
@@ -69,17 +69,21 @@ defmodule ExCompilationCache.BuildCache do
       Calendar.strftime(artifact.timestamp, "%Y%m%d%H%M%S")
     ]
 
-    Enum.join(parts, "_")
+    artifact_name = Enum.join(parts, "_")
+
+    if extension do
+      "#{artifact_name}.#{extension}"
+    else
+      artifact_name
+    end
   end
 
   def remote_artifact_path(%__MODULE__{} = artifact, extension) do
-    remote_path = Enum.join([
+    Enum.join([
       artifact.architecture,
       artifact.mix_env,
-      artifact_name(artifact)
+      artifact_name(artifact, extension)
     ], "/")
-
-    "#{remote_path}.#{extension}"
   end
 
   def search_prefix(%__MODULE__{} = artifact) do
