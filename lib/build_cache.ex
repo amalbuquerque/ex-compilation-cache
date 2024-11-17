@@ -41,11 +41,16 @@ defmodule ExCompilationCache.BuildCache do
     # drop the extension
     artifact_name = String.trim_trailing(artifact_name, Path.extname(artifact_name))
 
-    architecture = Enum.find(@cacheable_architectures, &String.contains?(artifact_name, to_string(&1)))
-    operating_system = Enum.find(@cacheable_operating_systems, &String.contains?(artifact_name, to_string(&1)))
+    architecture =
+      Enum.find(@cacheable_architectures, &String.contains?(artifact_name, to_string(&1)))
+
+    operating_system =
+      Enum.find(@cacheable_operating_systems, &String.contains?(artifact_name, to_string(&1)))
+
     mix_env = Enum.find(@cacheable_mix_envs, &String.contains?(artifact_name, to_string(&1)))
 
-    [timestamp_string, commit_hash | _] = artifact_name
+    [timestamp_string, commit_hash | _] =
+      artifact_name
       |> String.split("_")
       |> Enum.reverse()
 
@@ -54,8 +59,12 @@ defmodule ExCompilationCache.BuildCache do
     new(architecture, operating_system, mix_env, commit_hash, timestamp)
   end
 
-  defp parse_timestamp(<<yyyy::binary-4, month::binary-2, dd::binary-2, hh::binary-2, minutes::binary-2, seconds::binary-2>>) do
-    {:ok, timestamp, 0} = DateTime.from_iso8601("#{yyyy}-#{month}-#{dd} #{hh}:#{minutes}:#{seconds}Z")
+  defp parse_timestamp(
+         <<yyyy::binary-4, month::binary-2, dd::binary-2, hh::binary-2, minutes::binary-2,
+           seconds::binary-2>>
+       ) do
+    {:ok, timestamp, 0} =
+      DateTime.from_iso8601("#{yyyy}-#{month}-#{dd} #{hh}:#{minutes}:#{seconds}Z")
 
     timestamp
   end
@@ -79,11 +88,14 @@ defmodule ExCompilationCache.BuildCache do
   end
 
   def remote_artifact_path(%__MODULE__{} = artifact, extension) do
-    Enum.join([
-      artifact.architecture,
-      artifact.mix_env,
-      artifact_name(artifact, extension)
-    ], "/")
+    Enum.join(
+      [
+        artifact.architecture,
+        artifact.mix_env,
+        artifact_name(artifact, extension)
+      ],
+      "/"
+    )
   end
 
   def search_prefix(%__MODULE__{} = artifact) do
@@ -96,11 +108,14 @@ defmodule ExCompilationCache.BuildCache do
 
     search_prefix = Enum.join(parts, "_")
 
-    Enum.join([
-      artifact.architecture,
-      artifact.mix_env,
-      search_prefix
-    ], "/")
+    Enum.join(
+      [
+        artifact.architecture,
+        artifact.mix_env,
+        search_prefix
+      ],
+      "/"
+    )
   end
 
   # to simplify, we assume that only Linux laptops use x86_64, since

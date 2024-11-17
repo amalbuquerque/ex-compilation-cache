@@ -1,3 +1,5 @@
 %{
+  "ham": {:hex, :ham, "0.3.0", "7cd031b4a55fba219c11553e7b13ba73bd86eab4034518445eff1e038cb9a44d", [:mix], [], "hexpm", "7d6c6b73d7a6a83233876cc1b06a4d9b5de05562b228effda4532f9a49852bf6"},
+  "mimic": {:hex, :mimic, "1.10.2", "0d7e67ba09b1e8fe21a61a91f4cb2b876151c2d7e1c9bf6fc325195dd33075dd", [:mix], [{:ham, "~> 0.2", [hex: :ham, repo: "hexpm", optional: false]}], "hexpm", "21a50eddbdee1e9bad93cb8738bd4e224913d0d25a06692d34fb19881dba7292"},
   "typed_struct": {:hex, :typed_struct, "0.3.0", "939789e3c1dca39d7170c87f729127469d1315dcf99fee8e152bb774b17e7ff7", [:mix], [], "hexpm", "c50bd5c3a61fe4e198a8504f939be3d3c85903b382bde4865579bc23111d1b6d"},
 }

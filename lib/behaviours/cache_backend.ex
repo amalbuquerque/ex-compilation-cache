@@ -25,7 +25,8 @@ defmodule ExCompilationCache.Behaviours.CacheBackend do
 
   It should return an :ok tuple or an :error tuple, depending on the upload outcome:
   """
-  @callback upload_cache_artifact(local_path :: String.t(), artifact_remote_path :: String.t()) :: {:ok, term()} | {:error, term()}
+  @callback upload_cache_artifact(local_path :: String.t(), artifact_remote_path :: String.t()) ::
+              {:ok, term()} | {:error, term()}
 
   @doc """
   Function that will be called to download a compilation cache artifact.
@@ -34,10 +35,14 @@ defmodule ExCompilationCache.Behaviours.CacheBackend do
 
   It should return an :ok tuple with the full path of the downloaded compilation artifact, or an :error tuple.
   """
-  @callback download_cache_artifact(artifact_remote_path :: String.t(), artifact_local_path :: String.t()) :: {:ok, String.t()} | {:error, term()}
+  @callback download_cache_artifact(
+              artifact_remote_path :: String.t(),
+              artifact_local_path :: String.t()
+            ) :: {:ok, String.t()} | {:error, term()}
 
   @doc """
   Function that returns a cache artifact if it exists in the remote storage.
   """
-  @callback fetch_cache_artifact(local_artifact :: BuildCache.t()) :: {:ok, BuildCache.t()} | {:error, :remote_cache_artifact_not_found}
+  @callback fetch_cache_artifact(local_artifact :: BuildCache.t()) ::
+              {:ok, BuildCache.t()} | {:error, :remote_cache_artifact_not_found}
 end

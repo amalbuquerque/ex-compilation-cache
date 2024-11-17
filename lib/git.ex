@@ -69,21 +69,26 @@ defmodule ExCompilationCache.Git do
   ExCompilationCache.Git.latest_commit_also_present_in_remote("origin/master")
   ```
   """
-  @spec latest_commit_also_present_in_remote(String.t(), non_neg_integer()) :: {:ok, {commit(), [branch()]}} | {:error, :origin_commit_not_found}
-  def latest_commit_also_present_in_remote(remote_branch_name \\ "origin/main", number_of_commits \\ 200) do
+  @spec latest_commit_also_present_in_remote(String.t(), non_neg_integer()) ::
+          {:ok, {commit(), [branch()]}} | {:error, :origin_commit_not_found}
+  def latest_commit_also_present_in_remote(
+        remote_branch_name \\ "origin/main",
+        number_of_commits \\ 200
+      ) do
     full_remote_branch_name = "remotes/#{remote_branch_name}"
 
-    result = Enum.reduce_while(0..(number_of_commits-1), nil, fn commit_number, _acc ->
-      commit_reference = "HEAD~#{commit_number}"
+    result =
+      Enum.reduce_while(0..(number_of_commits - 1), nil, fn commit_number, _acc ->
+        commit_reference = "HEAD~#{commit_number}"
 
-      branches = branches(commit_reference)
+        branches = branches(commit_reference)
 
-      if(full_remote_branch_name in branches) do
-        {:halt, {commit_hash(commit_reference), branches}}
-      else
-        {:cont, nil}
-      end
-    end)
+        if(full_remote_branch_name in branches) do
+          {:halt, {commit_hash(commit_reference), branches}}
+        else
+          {:cont, nil}
+        end
+      end)
 
     case result do
       nil ->
@@ -155,13 +160,14 @@ defmodule ExCompilationCache.Git do
   It will return the given commit hash.
   """
   def commit_hash(reference) do
-    commit_args = Enum.map(@latest_commit_args, fn
-      "HEAD" ->
-        reference
+    commit_args =
+      Enum.map(@latest_commit_args, fn
+        "HEAD" ->
+          reference
 
-      arg ->
-        arg
-    end)
+        arg ->
+          arg
+      end)
 
     {output, 0} = System.cmd("git", commit_args)
 
