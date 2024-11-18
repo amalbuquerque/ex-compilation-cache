@@ -1,0 +1,438 @@
+123commit_hash_dummy____git_show_example Chore: Add mimic + BuildCache tests
+diff --git a/lib/behaviours/cache_backend.ex b/lib/behaviours/cache_backend.ex
+index 207a514..361222c 100644
+--- a/lib/behaviours/cache_backend.ex
++++ b/lib/behaviours/cache_backend.ex
+@@ -25,7 +25,8 @@ defmodule ExCompilationCache.Behaviours.CacheBackend do
+ 
+   It should return an :ok tuple or an :error tuple, depending on the upload outcome:
+   """
+-  @callback upload_cache_artifact(local_path :: String.t(), artifact_remote_path :: String.t()) :: {:ok, term()} | {:error, term()}
++  @callback upload_cache_artifact(local_path :: String.t(), artifact_remote_path :: String.t()) ::
++              {:ok, term()} | {:error, term()}
+ 
+   @doc """
+   Function that will be called to download a compilation cache artifact.
+@@ -34,10 +35,14 @@ defmodule ExCompilationCache.Behaviours.CacheBackend do
+ 
+   It should return an :ok tuple with the full path of the downloaded compilation artifact, or an :error tuple.
+   """
+-  @callback download_cache_artifact(artifact_remote_path :: String.t(), artifact_local_path :: String.t()) :: {:ok, String.t()} | {:error, term()}
++  @callback download_cache_artifact(
++              artifact_remote_path :: String.t(),
++              artifact_local_path :: String.t()
++            ) :: {:ok, String.t()} | {:error, term()}
+ 
+   @doc """
+   Function that returns a cache artifact if it exists in the remote storage.
+   """
+-  @callback fetch_cache_artifact(local_artifact :: BuildCache.t()) :: {:ok, BuildCache.t()} | {:error, :remote_cache_artifact_not_found}
++  @callback fetch_cache_artifact(local_artifact :: BuildCache.t()) ::
++              {:ok, BuildCache.t()} | {:error, :remote_cache_artifact_not_found}
+ end
+diff --git a/lib/build_cache.ex b/lib/build_cache.ex
+index 46497e3..869962d 100644
+--- a/lib/build_cache.ex
++++ b/lib/build_cache.ex
+@@ -41,11 +41,16 @@ defmodule ExCompilationCache.BuildCache do
+     # drop the extension
+     artifact_name = String.trim_trailing(artifact_name, Path.extname(artifact_name))
+ 
+-    architecture = Enum.find(@cacheable_architectures, &String.contains?(artifact_name, to_string(&1)))
+-    operating_system = Enum.find(@cacheable_operating_systems, &String.contains?(artifact_name, to_string(&1)))
++    architecture =
++      Enum.find(@cacheable_architectures, &String.contains?(artifact_name, to_string(&1)))
++
++    operating_system =
++      Enum.find(@cacheable_operating_systems, &String.contains?(artifact_name, to_string(&1)))
++
+     mix_env = Enum.find(@cacheable_mix_envs, &String.contains?(artifact_name, to_string(&1)))
+ 
+-    [timestamp_string, commit_hash | _] = artifact_name
++    [timestamp_string, commit_hash | _] =
++      artifact_name
+       |> String.split("_")
+       |> Enum.reverse()
+ 
+@@ -54,8 +59,12 @@ defmodule ExCompilationCache.BuildCache do
+     new(architecture, operating_system, mix_env, commit_hash, timestamp)
+   end
+ 
+-  defp parse_timestamp(<<yyyy::binary-4, month::binary-2, dd::binary-2, hh::binary-2, minutes::binary-2, seconds::binary-2>>) do
+-    {:ok, timestamp, 0} = DateTime.from_iso8601("#{yyyy}-#{month}-#{dd} #{hh}:#{minutes}:#{seconds}Z")
++  defp parse_timestamp(
++         <<yyyy::binary-4, month::binary-2, dd::binary-2, hh::binary-2, minutes::binary-2,
++           seconds::binary-2>>
++       ) do
++    {:ok, timestamp, 0} =
++      DateTime.from_iso8601("#{yyyy}-#{month}-#{dd} #{hh}:#{minutes}:#{seconds}Z")
+ 
+     timestamp
+   end
+@@ -79,11 +88,14 @@ defmodule ExCompilationCache.BuildCache do
+   end
+ 
+   def remote_artifact_path(%__MODULE__{} = artifact, extension) do
+-    Enum.join([
+-      artifact.architecture,
+-      artifact.mix_env,
+-      artifact_name(artifact, extension)
+-    ], "/")
++    Enum.join(
++      [
++        artifact.architecture,
++        artifact.mix_env,
++        artifact_name(artifact, extension)
++      ],
++      "/"
++    )
+   end
+ 
+   def search_prefix(%__MODULE__{} = artifact) do
+@@ -96,11 +108,14 @@ defmodule ExCompilationCache.BuildCache do
+ 
+     search_prefix = Enum.join(parts, "_")
+ 
+-    Enum.join([
+-      artifact.architecture,
+-      artifact.mix_env,
+-      search_prefix
+-    ], "/")
++    Enum.join(
++      [
++        artifact.architecture,
++        artifact.mix_env,
++        search_prefix
++      ],
++      "/"
++    )
+   end
+ 
+   # to simplify, we assume that only Linux laptops use x86_64, since
+diff --git a/lib/ex_compilation_cache.ex b/lib/ex_compilation_cache.ex
+index c5cd53b..c782357 100644
+--- a/lib/ex_compilation_cache.ex
++++ b/lib/ex_compilation_cache.ex
+@@ -27,10 +27,16 @@ defmodule ExCompilationCache do
+   """
+   def create_and_upload_build_cache(mix_env, remote_branch, zip_password, cache_backend) do
+     with {:ok, build_directory} <- check_build_directory(mix_env),
+-      {:ok, {commit_hash, _branches}} <- Git.latest_commit_also_present_in_remote(remote_branch),
+-      artifact = BuildCache.new(mix_env, commit_hash),
+-      {:ok, local_artifact_path} <- Zip.zip_directory(build_directory, "_build/#{BuildCache.artifact_name(artifact)}", zip_password),
+-      :ok <- cache_backend.setup_before_upload() do
++         {:ok, {commit_hash, _branches}} <-
++           Git.latest_commit_also_present_in_remote(remote_branch),
++         artifact = BuildCache.new(mix_env, commit_hash),
++         {:ok, local_artifact_path} <-
++           Zip.zip_directory(
++             build_directory,
++             "_build/#{BuildCache.artifact_name(artifact)}",
++             zip_password
++           ),
++         :ok <- cache_backend.setup_before_upload() do
+       remote_artifact_path = BuildCache.remote_artifact_path(artifact, :zip)
+ 
+       cache_backend.upload_cache_artifact(local_artifact_path, remote_artifact_path)
+@@ -38,23 +44,24 @@ defmodule ExCompilationCache do
+   end
+ 
+   @doc """
+-  This function checks if the current local branch includes an "upstream" commit.
++   This function checks if the current local branch includes an "upstream" commit.
+ 
+-  If so, it means that a compilation cache built for the current code will be useful (as in, can be used as cache),
+-  for other users who also have checked out a branch that includes the "upstream" commit.
++   If so, it means that a compilation cache built for the current code will be useful (as in, can be used as cache),
++   for other users who also have checked out a branch that includes the "upstream" commit.
+ 
+-  From another perspective, it also means that if a compilation cache exists, it will be useful for the current user.
++   From another perspective, it also means that if a compilation cache exists, it will be useful for the current user.
+ 
+-  Use it like this:
++   Use it like this:
+ 
+-  ```
+-  ExCompilationCache.current_code_includes_upstream_commit?("origin/main")
+-  ```
+- """
++   ```
++   ExCompilationCache.current_code_includes_upstream_commit?("origin/main")
++   ```
++  """
+   def current_code_includes_upstream_commit?(remote_branch) do
+     case Git.latest_commit_also_present_in_remote(remote_branch) do
+       {:ok, {_commit_hash, _branches}} ->
+         true
++
+       _ ->
+         false
+     end
+@@ -71,9 +78,10 @@ defmodule ExCompilationCache do
+   """
+   def cached_build?(mix_env, remote_branch, cache_backend) do
+     with true <- current_code_includes_upstream_commit?(remote_branch),
+-      {:ok, {commit_hash, _branches}} <- Git.latest_commit_also_present_in_remote(remote_branch),
+-      local_artifact = BuildCache.new(mix_env, commit_hash),
+-      {:ok, _remote_artifact} <- cache_backend.fetch_cache_artifact(local_artifact) do
++         {:ok, {commit_hash, _branches}} <-
++           Git.latest_commit_also_present_in_remote(remote_branch),
++         local_artifact = BuildCache.new(mix_env, commit_hash),
++         {:ok, _remote_artifact} <- cache_backend.fetch_cache_artifact(local_artifact) do
+       true
+     else
+       {:error, _} ->
+@@ -92,17 +100,19 @@ defmodule ExCompilationCache do
+   """
+   def download_and_apply_cached_build(mix_env, remote_branch, zip_password, cache_backend) do
+     with true <- current_code_includes_upstream_commit?(remote_branch),
+-      {:ok, {commit_hash, _branches}} <- Git.latest_commit_also_present_in_remote(remote_branch),
+-      local_artifact = BuildCache.new(mix_env, commit_hash),
+-      {:ok, remote_artifact} <- cache_backend.fetch_cache_artifact(local_artifact),
+-      remote_artifact_path = BuildCache.remote_artifact_path(remote_artifact, :zip),
+-      :ok = File.mkdir_p("_build"),
+-      artifact_name = BuildCache.artifact_name(remote_artifact, :zip),
+-      local_artifact_path = Path.join("_build", artifact_name),
+-      {:ok, _} <- cache_backend.download_cache_artifact(remote_artifact_path, local_artifact_path) do
+-        # unzip to . since zip has _build/<mix_env> folder structure
+-        Zip.unzip_to(local_artifact_path, ".", zip_password)
+-      end
++         {:ok, {commit_hash, _branches}} <-
++           Git.latest_commit_also_present_in_remote(remote_branch),
++         local_artifact = BuildCache.new(mix_env, commit_hash),
++         {:ok, remote_artifact} <- cache_backend.fetch_cache_artifact(local_artifact),
++         remote_artifact_path = BuildCache.remote_artifact_path(remote_artifact, :zip),
++         :ok = File.mkdir_p("_build"),
++         artifact_name = BuildCache.artifact_name(remote_artifact, :zip),
++         local_artifact_path = Path.join("_build", artifact_name),
++         {:ok, _} <-
++           cache_backend.download_cache_artifact(remote_artifact_path, local_artifact_path) do
++      # unzip to . since zip has _build/<mix_env> folder structure
++      Zip.unzip_to(local_artifact_path, ".", zip_password)
++    end
+   end
+ 
+   defp check_build_directory(mix_env) do
+@@ -118,5 +128,4 @@ defmodule ExCompilationCache do
+         error
+     end
+   end
+-
+ end
+diff --git a/lib/git.ex b/lib/git.ex
+index e31a13b..2e59c79 100644
+--- a/lib/git.ex
++++ b/lib/git.ex
+@@ -69,21 +69,26 @@ defmodule ExCompilationCache.Git do
+   ExCompilationCache.Git.latest_commit_also_present_in_remote("origin/master")
+   ```
+   """
+-  @spec latest_commit_also_present_in_remote(String.t(), non_neg_integer()) :: {:ok, {commit(), [branch()]}} | {:error, :origin_commit_not_found}
+-  def latest_commit_also_present_in_remote(remote_branch_name \\ "origin/main", number_of_commits \\ 200) do
++  @spec latest_commit_also_present_in_remote(String.t(), non_neg_integer()) ::
++          {:ok, {commit(), [branch()]}} | {:error, :origin_commit_not_found}
++  def latest_commit_also_present_in_remote(
++        remote_branch_name \\ "origin/main",
++        number_of_commits \\ 200
++      ) do
+     full_remote_branch_name = "remotes/#{remote_branch_name}"
+ 
+-    result = Enum.reduce_while(0..(number_of_commits-1), nil, fn commit_number, _acc ->
+-      commit_reference = "HEAD~#{commit_number}"
++    result =
++      Enum.reduce_while(0..(number_of_commits - 1), nil, fn commit_number, _acc ->
++        commit_reference = "HEAD~#{commit_number}"
+ 
+-      branches = branches(commit_reference)
++        branches = branches(commit_reference)
+ 
+-      if(full_remote_branch_name in branches) do
+-        {:halt, {commit_hash(commit_reference), branches}}
+-      else
+-        {:cont, nil}
+-      end
+-    end)
++        if(full_remote_branch_name in branches) do
++          {:halt, {commit_hash(commit_reference), branches}}
++        else
++          {:cont, nil}
++        end
++      end)
+ 
+     case result do
+       nil ->
+@@ -155,13 +160,14 @@ defmodule ExCompilationCache.Git do
+   It will return the given commit hash.
+   """
+   def commit_hash(reference) do
+-    commit_args = Enum.map(@latest_commit_args, fn
+-      "HEAD" ->
+-        reference
++    commit_args =
++      Enum.map(@latest_commit_args, fn
++        "HEAD" ->
++          reference
+ 
+-      arg ->
+-        arg
+-    end)
++        arg ->
++          arg
++      end)
+ 
+     {output, 0} = System.cmd("git", commit_args)
+ 
+diff --git a/mix.exs b/mix.exs
+index ba8c9c0..52fcf6a 100644
+--- a/mix.exs
++++ b/mix.exs
+@@ -23,7 +23,8 @@ defmodule ExCompilationCache.MixProject do
+     [
+       # {:dep_from_hexpm, "~> 0.3.0"},
+       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
+-      {:typed_struct, "~> 0.3.0", runtime: false}
++      {:typed_struct, "~> 0.3.0", runtime: false},
++      {:mimic, "~> 1.10"}
+     ]
+   end
+ end
+diff --git a/mix.lock b/mix.lock
+index 6ae4b4e..ca0bc7f 100644
+--- a/mix.lock
++++ b/mix.lock
+@@ -1,3 +1,5 @@
+ %{
++  "ham": {:hex, :ham, "0.3.0", "7cd031b4a55fba219c11553e7b13ba73bd86eab4034518445eff1e038cb9a44d", [:mix], [], "hexpm", "7d6c6b73d7a6a83233876cc1b06a4d9b5de05562b228effda4532f9a49852bf6"},
++  "mimic": {:hex, :mimic, "1.10.2", "0d7e67ba09b1e8fe21a61a91f4cb2b876151c2d7e1c9bf6fc325195dd33075dd", [:mix], [{:ham, "~> 0.2", [hex: :ham, repo: "hexpm", optional: false]}], "hexpm", "21a50eddbdee1e9bad93cb8738bd4e224913d0d25a06692d34fb19881dba7292"},
+   "typed_struct": {:hex, :typed_struct, "0.3.0", "939789e3c1dca39d7170c87f729127469d1315dcf99fee8e152bb774b17e7ff7", [:mix], [], "hexpm", "c50bd5c3a61fe4e198a8504f939be3d3c85903b382bde4865579bc23111d1b6d"},
+ }
+diff --git a/test/build_cache_test.exs b/test/build_cache_test.exs
+new file mode 100644
+index 0000000..9fa1154
+--- /dev/null
++++ b/test/build_cache_test.exs
+@@ -0,0 +1,124 @@
++defmodule ExCompilationCache.BuildCacheTest do
++  use ExUnit.Case, async: true
++
++  use Mimic
++
++  alias ExCompilationCache.BuildCache
++
++  setup do
++    Mimic.copy(File)
++
++    :ok
++  end
++
++  @mix_env :dev
++  @commit_hash "1234567890abcdef1234567890abcdef"
++  @now ~U[2024-11-16 23:50:10.881572Z]
++
++  describe "new/2" do
++    test "returns the expected Linux struct" do
++      expect_linux()
++
++      assert linux_build_cache = BuildCache.new(@mix_env, @commit_hash)
++
++      assert linux_build_cache.architecture == :x86_64
++      assert linux_build_cache.operating_system == :linux
++      assert linux_build_cache.mix_env == @mix_env
++      assert linux_build_cache.commit_hash == @commit_hash
++      assert is_struct(linux_build_cache.timestamp, DateTime)
++    end
++
++    test "returns the expected MacOS struct" do
++      expect_macos()
++
++      assert macos_build_cache = BuildCache.new(@mix_env, @commit_hash)
++
++      assert macos_build_cache.architecture == :aarm64
++      assert macos_build_cache.operating_system == :macos
++      assert macos_build_cache.mix_env == @mix_env
++      assert macos_build_cache.commit_hash == @commit_hash
++      assert is_struct(macos_build_cache.timestamp, DateTime)
++    end
++  end
++
++  describe "new/5" do
++    test "returns the expected struct" do
++      assert build_cache =
++               BuildCache.new(:aarm64, :macos, @mix_env, @commit_hash, DateTime.utc_now())
++
++      assert build_cache.architecture == :aarm64
++      assert build_cache.operating_system == :macos
++      assert build_cache.mix_env == @mix_env
++      assert build_cache.commit_hash == @commit_hash
++      assert is_struct(build_cache.timestamp, DateTime)
++    end
++
++    test "it checks the architecture, OS and mix env" do
++      assert_raise FunctionClauseError, fn ->
++        BuildCache.new(:invalid_arch, :macos, @mix_env, @commit_hash, DateTime.utc_now())
++      end
++
++      assert_raise FunctionClauseError, fn ->
++        BuildCache.new(:aarm64, :invalid_os, @mix_env, @commit_hash, DateTime.utc_now())
++      end
++
++      assert_raise FunctionClauseError, fn ->
++        BuildCache.new(:aarm64, :macos, :invalid_mix_env, @commit_hash, DateTime.utc_now())
++      end
++    end
++  end
++
++  describe "parse/2" do
++    test "parses an artifact name to a BuildCache struct again" do
++      artifact_name_with_extension = "aarm64_macos_#{@mix_env}_#{@commit_hash}_20241116235010.zip"
++
++      assert build_cache = BuildCache.parse(artifact_name_with_extension)
++
++      assert build_cache.architecture == :aarm64
++      assert build_cache.operating_system == :macos
++      assert build_cache.mix_env == @mix_env
++      assert build_cache.commit_hash == @commit_hash
++      assert is_struct(build_cache.timestamp, DateTime)
++    end
++  end
++
++  describe "artifact_name/2" do
++    test "returns the artifact name for a BuildCache" do
++      assert build_cache = BuildCache.new(:aarm64, :macos, @mix_env, @commit_hash, @now)
++
++      assert artifact_name = BuildCache.artifact_name(build_cache)
++      assert artifact_name_with_extension = BuildCache.artifact_name(build_cache, "zip")
++
++      assert "aarm64_macos_#{@mix_env}_#{@commit_hash}_20241116235010" == artifact_name
++
++      assert "aarm64_macos_#{@mix_env}_#{@commit_hash}_20241116235010.zip" ==
++               artifact_name_with_extension
++    end
++  end
++
++  describe "remote_artifact_path/2" do
++    test "returns the expected remote full path" do
++      assert build_cache = BuildCache.new(:aarm64, :macos, @mix_env, @commit_hash, @now)
++
++      remote_full_path = BuildCache.remote_artifact_path(build_cache, "zip")
++
++      assert remote_full_path ==
++               "aarm64/#{@mix_env}/aarm64_macos_dev_1234567890abcdef1234567890abcdef_20241116235010.zip"
++    end
++  end
++
++  describe "search_prefix" do
++    test "returns the expected search prefix" do
++      assert build_cache = BuildCache.new(:aarm64, :macos, @mix_env, @commit_hash, @now)
++
++      search_prefix = BuildCache.search_prefix(build_cache)
++
++      # doesn't include the commit hash suffix
++      assert search_prefix == "aarm64/dev/aarm64_macos_dev_1234567890abcdef1234567890abcdef"
++    end
++  end
++
++  # expect 2 times because File.exists?/1 is called twice, once for architecture, the other for OS
++  def expect_linux, do: expect(File, :exists?, 2, fn "/proc/cpuinfo" -> true end)
++  def expect_macos, do: expect(File, :exists?, 2, fn "/proc/cpuinfo" -> false end)
++end

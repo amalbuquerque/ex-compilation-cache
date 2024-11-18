@@ -83,7 +83,7 @@ defmodule ExCompilationCache.Git do
 
         branches = branches(commit_reference)
 
-        if(full_remote_branch_name in branches) do
+        if full_remote_branch_name in branches do
           {:halt, {commit_hash(commit_reference), branches}}
         else
           {:cont, nil}
@@ -124,12 +124,16 @@ defmodule ExCompilationCache.Git do
 
     output
     |> String.split("\n", trim: true)
-    |> Enum.map(fn
+    |> Enum.flat_map(fn
       "* " <> current_branch ->
-        current_branch
+        [current_branch]
 
       other_branch ->
-        String.trim(other_branch)
+        if String.contains?(other_branch, " -> ") do
+          []
+        else
+          [String.trim(other_branch)]
+        end
     end)
   end
 

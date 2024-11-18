@@ -1,0 +1,7 @@
+? TODO
+? foo.txt
+? test/git_test.exs
+? test/support/git_branch_contains_example
+? test/support/git_show_example
+C README.md
+C lib/git.ex
