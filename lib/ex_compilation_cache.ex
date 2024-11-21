@@ -22,8 +22,6 @@ defmodule ExCompilationCache do
   ```
   ExCompilationCache.create_and_upload_build_cache(:dev, "origin/main", "12345", ExCompilationCache.S3Backend)
   ```
-
-  ⚠️ TODO: Delete .zip after successful upload
   """
   def create_and_upload_build_cache(mix_env, remote_branch, zip_password, cache_backend) do
     with {:ok, build_directory} <- check_build_directory(mix_env),
@@ -39,7 +37,11 @@ defmodule ExCompilationCache do
          :ok <- cache_backend.setup_before_upload() do
       remote_artifact_path = BuildCache.remote_artifact_path(artifact, :zip)
 
-      cache_backend.upload_cache_artifact(local_artifact_path, remote_artifact_path)
+      result = cache_backend.upload_cache_artifact(local_artifact_path, remote_artifact_path)
+
+      System.cmd("rm", ~w[-rf #{local_artifact_path}])
+
+      result
     end
   end
 
