@@ -34,12 +34,12 @@ defmodule ExCompilationCache do
              "_build/#{BuildCache.artifact_name(artifact)}",
              zip_password
            ),
-         :ok <- cache_backend.setup_before_upload() do
+         :ok <- cache_backend.setup_before() do
       remote_artifact_path = BuildCache.remote_artifact_path(artifact, :zip)
 
       result = cache_backend.upload_cache_artifact(local_artifact_path, remote_artifact_path)
 
-      System.cmd("rm", ~w[-rf #{local_artifact_path}])
+      delete_file(local_artifact_path)
 
       result
     end
@@ -97,8 +97,6 @@ defmodule ExCompilationCache do
   ```
   ExCompilationCache.download_and_apply_cached_build(:dev, "origin/main", "12345", ExCompilationCache.S3Backend)
   ```
-
-  ⚠️ TODO: Delete .zip after successful download
   """
   def download_and_apply_cached_build(mix_env, remote_branch, zip_password, cache_backend) do
     with true <- current_code_includes_upstream_commit?(remote_branch),
@@ -110,10 +108,15 @@ defmodule ExCompilationCache do
          :ok = File.mkdir_p("_build"),
          artifact_name = BuildCache.artifact_name(remote_artifact, :zip),
          local_artifact_path = Path.join("_build", artifact_name),
+         :ok <- cache_backend.setup_before(),
          {:ok, _} <-
            cache_backend.download_cache_artifact(remote_artifact_path, local_artifact_path) do
       # unzip to . since zip has _build/<mix_env> folder structure
-      Zip.unzip_to(local_artifact_path, ".", zip_password)
+      result = Zip.unzip_to(local_artifact_path, ".", zip_password)
+
+      delete_file(local_artifact_path)
+
+      result
     end
   end
 
@@ -129,5 +132,9 @@ defmodule ExCompilationCache do
 
         error
     end
+  end
+
+  defp delete_file(file_path) do
+    System.cmd("rm", ~w[-rf #{file_path}])
   end
 end

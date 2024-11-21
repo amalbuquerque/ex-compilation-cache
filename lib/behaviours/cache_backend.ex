@@ -7,11 +7,11 @@ defmodule ExCompilationCache.Behaviours.CacheBackend do
   alias ExCompilationCache.BuildCache
 
   @doc """
-  Function that will be called before trying to upload a compilation artifact.
+  Function that will be called before trying to upload or download a compilation artifact.
 
-  Use it for any kind of setup (e.g. authentication) required for the upload to be successful.
+  Use it for any kind of setup (e.g. authentication) required for the operation to be successful.
   """
-  @callback setup_before_upload() :: :ok
+  @callback setup_before() :: :ok
 
   @doc """
   Function that will be called to upload a compilation artifact.
