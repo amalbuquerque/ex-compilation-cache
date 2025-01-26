@@ -7,6 +7,7 @@ defmodule ExCompilationCache.Git do
   @current_changes_args ~w[ls-files --others --modified --deleted --exclude-standard -t]
   @latest_commit_args ~w[show HEAD --pretty=oneline --no-abbrev-commit]
   @branches_for_commit_args ~w[branch -a --contains <commit>]
+  @number_of_commits_args ~w[rev-list --count HEAD]
 
   @type commit :: String.t()
   @type branch :: String.t()
@@ -59,7 +60,7 @@ defmodule ExCompilationCache.Git do
   end
 
   @doc """
-  It will check the latest 200 commits and return the first commit (starting from HEAD) which also exists in the remote
+  It will check the latest 200 commits (max) and return the first commit (starting from HEAD) which also exists in the remote
   branch (usually `origin/main` or `origin/master`).
 
   Use it like this:
@@ -73,9 +74,11 @@ defmodule ExCompilationCache.Git do
           {:ok, {commit(), [branch()]}} | {:error, :origin_commit_not_found}
   def latest_commit_also_present_in_remote(
         remote_branch_name \\ "origin/main",
-        number_of_commits \\ 200
+        number_of_commits_max \\ 200
       ) do
     full_remote_branch_name = "remotes/#{remote_branch_name}"
+
+    number_of_commits = min(number_of_commits_max, number_of_commits_current_branch())
 
     result =
       Enum.reduce_while(0..(number_of_commits - 1), nil, fn commit_number, _acc ->
@@ -178,5 +181,15 @@ defmodule ExCompilationCache.Git do
     [commit | _] = String.split(output, "\s", trim: true)
 
     commit
+  end
+
+  def number_of_commits_current_branch do
+    {number_of_commits_str, 0} = System.cmd("git", @number_of_commits_args)
+
+    {number_of_commits, ""} = number_of_commits_str
+      |> String.trim()
+      |> Integer.parse()
+
+    number_of_commits
   end
 end

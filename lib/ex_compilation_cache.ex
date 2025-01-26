@@ -14,6 +14,37 @@ defmodule ExCompilationCache do
   alias ExCompilationCache.Zip
 
   @doc """
+  Should be called when a compilation needs to be done.
+
+  It will always try to download a cached artifact for the latest `master` commit if available,
+  otherwise it will compile and then cache the resulting compilation.
+  """
+  def download_cache_or_compile_and_upload(mix_env, remote_branch, zip_password, cache_backend) do
+    if cached_build?(mix_env, remote_branch, cache_backend) do
+      IO.puts("👷🚛 Downloading the build cache...")
+
+      download_and_apply_cached_build(mix_env, remote_branch, zip_password, cache_backend)
+
+      IO.puts("✅ Build cache downloaded and put in place 🌈")
+      :ok
+    else
+      IO.puts("👷🏗️ No build cache available... Will compile the code and upload a new build cache")
+
+      case Mix.Task.run("compile") do
+        result when result in [:ok, :noop] ->
+          create_and_upload_build_cache(mix_env, remote_branch, zip_password, cache_backend)
+
+          IO.puts("✅ Build cache uploaded. Thank you for taking the time!")
+          :ok
+
+        _ ->
+          # compilation failed, let's end here
+          :noop
+      end
+    end
+  end
+
+  @doc """
   Creates the build cache and uploads it. It assumes the compilation already succeeded, so it will
   use the existing compilation artifacts stored in  `_build/<mix_env>`.
 
@@ -83,10 +114,16 @@ defmodule ExCompilationCache do
          {:ok, {commit_hash, _branches}} <-
            Git.latest_commit_also_present_in_remote(remote_branch),
          local_artifact = BuildCache.new(mix_env, commit_hash),
+         :ok <- cache_backend.setup_before(),
          {:ok, _remote_artifact} <- cache_backend.fetch_cache_artifact(local_artifact) do
+      IO.puts(
+        "🍏 There is a build cache for commit='#{commit_hash}' and '#{local_artifact.architecture}'"
+      )
+
       true
     else
       {:error, _} ->
+        IO.puts("🙅 No build cache available")
         false
     end
   end
@@ -103,12 +140,12 @@ defmodule ExCompilationCache do
          {:ok, {commit_hash, _branches}} <-
            Git.latest_commit_also_present_in_remote(remote_branch),
          local_artifact = BuildCache.new(mix_env, commit_hash),
+         :ok <- cache_backend.setup_before(),
          {:ok, remote_artifact} <- cache_backend.fetch_cache_artifact(local_artifact),
          remote_artifact_path = BuildCache.remote_artifact_path(remote_artifact, :zip),
          :ok = File.mkdir_p("_build"),
          artifact_name = BuildCache.artifact_name(remote_artifact, :zip),
          local_artifact_path = Path.join("_build", artifact_name),
-         :ok <- cache_backend.setup_before(),
          {:ok, _} <-
            cache_backend.download_cache_artifact(remote_artifact_path, local_artifact_path) do
       # unzip to . since zip has _build/<mix_env> folder structure

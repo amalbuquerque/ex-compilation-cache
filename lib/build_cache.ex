@@ -17,6 +17,9 @@ defmodule ExCompilationCache.BuildCache do
   @cacheable_operating_systems [:macos, :linux]
   @cacheable_mix_envs [:dev, :test]
 
+  @doc """
+  Returns a struct with: architecture, operating_system, mix_env, commit_hash, timestamp.
+  """
   def new(mix_env, commit_hash) do
     architecture = current_architecture()
     operating_system = current_operating_system()
