@@ -7,7 +7,9 @@ defmodule Mix.Tasks.Maybe.Compile do
     zip_password = "12345"
     cache_backend = ExCompilationCache.S3Backend
 
-    IO.puts("Hello world! Calling the cache!")
+    previous_log_level = Logger.level()
+
+    Logger.configure(level: :info)
 
     ExCompilationCache.download_cache_or_compile_and_upload(
       mix_env,
@@ -15,5 +17,7 @@ defmodule Mix.Tasks.Maybe.Compile do
       zip_password,
       cache_backend
     )
+
+    Logger.configure(level: previous_log_level)
   end
 end

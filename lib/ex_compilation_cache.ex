@@ -28,17 +28,19 @@ defmodule ExCompilationCache do
       IO.puts("✅ Build cache downloaded and put in place 🌈")
       :ok
     else
-      IO.puts("👷🏗️ No build cache available... Will compile the code and upload a new build cache")
+      IO.puts("👷🏗️ Will compile the code and upload a new build cache...")
 
       case Mix.Task.run("compile") do
-        result when result in [:ok, :noop] ->
+        {:ok, _} ->
           create_and_upload_build_cache(mix_env, remote_branch, zip_password, cache_backend)
 
           IO.puts("✅ Build cache uploaded. Thank you for taking the time!")
           :ok
 
-        _ ->
+        compilation_result ->
           # compilation failed, let's end here
+          IO.puts("Nothing to do. (compilation result=#{inspect(compilation_result)})")
+
           :noop
       end
     end
@@ -122,8 +124,8 @@ defmodule ExCompilationCache do
 
       true
     else
-      {:error, _} ->
-        IO.puts("🙅 No build cache available")
+      {:error, reason} ->
+        IO.puts("🙅 No build cache available (reason=#{inspect(reason)})")
         false
     end
   end
