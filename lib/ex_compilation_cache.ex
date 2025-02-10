@@ -31,7 +31,7 @@ defmodule ExCompilationCache do
       IO.puts("👷🏗️ Will compile the code and upload a new build cache...")
 
       case Mix.Task.run("compile") do
-        {:ok, _} ->
+        {ok_or_noop, _} when ok_or_noop in [:ok, :noop] ->
           create_and_upload_build_cache(mix_env, remote_branch, zip_password, cache_backend)
 
           IO.puts("✅ Build cache uploaded. Thank you for taking the time!")
