@@ -186,7 +186,8 @@ defmodule ExCompilationCache.Git do
   def number_of_commits_current_branch do
     {number_of_commits_str, 0} = System.cmd("git", @number_of_commits_args)
 
-    {number_of_commits, ""} = number_of_commits_str
+    {number_of_commits, ""} =
+      number_of_commits_str
       |> String.trim()
       |> Integer.parse()
 

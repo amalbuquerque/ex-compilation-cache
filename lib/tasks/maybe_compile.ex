@@ -48,7 +48,8 @@ defmodule Mix.Tasks.Maybe.Compile do
   end
 
   defp mix_env!(parsed_args) do
-    mix_env = parsed_args
+    mix_env =
+      parsed_args
       |> Keyword.get(:mix_env, "dev")
       |> String.to_atom()
 
