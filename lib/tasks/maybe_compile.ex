@@ -12,7 +12,8 @@ defmodule Mix.Tasks.Maybe.Compile do
       options.mix_env,
       options.remote_branch,
       options.zip_password,
-      options.cache_backend
+      options.cache_backend,
+      options.force
     )
 
     Logger.configure(level: previous_log_level)
@@ -25,14 +26,16 @@ defmodule Mix.Tasks.Maybe.Compile do
         remote_branch: :string,
         zip_password: :string,
         cache_backend: :string,
-        log_level: :string
+        log_level: :string,
+        force: :boolean
       ],
       aliases: [
         m: :mix_env,
         r: :remote_branch,
         z: :zip_password,
         b: :cache_backend,
-        l: :log_level
+        l: :log_level,
+        f: :force
       ]
     ]
 
@@ -43,7 +46,8 @@ defmodule Mix.Tasks.Maybe.Compile do
       remote_branch: remote_branch!(parsed_args),
       zip_password: parsed_args[:zip_password],
       cache_backend: cache_backend!(parsed_args),
-      log_level: log_level!(parsed_args)
+      log_level: log_level!(parsed_args),
+      force: Keyword.get(parsed_args, :force, false)
     }
   end
 

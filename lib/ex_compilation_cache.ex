@@ -18,31 +18,53 @@ defmodule ExCompilationCache do
 
   It will always try to download a cached artifact for the latest `master` commit if available,
   otherwise it will compile and then cache the resulting compilation.
+
+  If `force` is true, it will force the local compilation and upload, even if there is a cached build that can be used.
   """
-  def download_cache_or_compile_and_upload(mix_env, remote_branch, zip_password, cache_backend) do
-    if cached_build?(mix_env, remote_branch, cache_backend) do
+  def download_cache_or_compile_and_upload(mix_env, remote_branch, zip_password, cache_backend, force) do
+    cached_build? = cached_build?(mix_env, remote_branch, cache_backend)
+
+    if force or not cached_build? do
+      IO.puts("👷🏗️ Will compile the code and upload a new build cache...")
+
+      compile_and_upload(mix_env, remote_branch, zip_password, cache_backend)
+    else
       IO.puts("👷🚛 Downloading the build cache...")
 
       download_and_apply_cached_build(mix_env, remote_branch, zip_password, cache_backend)
 
-      IO.puts("✅ Build cache downloaded and put in place 🌈")
+      IO.puts("✅ Build cache downloaded and put in place 🌈 Will compile the diff between local code and build cache")
+
+      compile()
+
       :ok
-    else
-      IO.puts("👷🏗️ Will compile the code and upload a new build cache...")
+    end
+  end
 
-      case Mix.Task.run("compile") do
-        {ok_or_noop, _} when ok_or_noop in [:ok, :noop] ->
-          create_and_upload_build_cache(mix_env, remote_branch, zip_password, cache_backend)
+  defp compile do
+    case Mix.Task.run("compile") do
+      {:ok, files} ->
+        IO.puts("🏗️ Compiled #{length(files)} files.")
 
-          IO.puts("✅ Build cache uploaded. Thank you for taking the time!")
-          :ok
+        :ok
 
-        compilation_result ->
-          # compilation failed, let's end here
-          IO.puts("Nothing to do. (compilation result=#{inspect(compilation_result)})")
+      :noop ->
+        IO.puts("Nothing to do 😎")
 
-          :noop
-      end
+        :noop
+
+      compilation_result ->
+        IO.puts("Compilation failed! (compilation result=#{inspect(compilation_result)})")
+
+        compilation_result
+    end
+  end
+
+  defp compile_and_upload(mix_env, remote_branch, zip_password, cache_backend) do
+    if compile() in [:ok, :noop] do
+      create_and_upload_build_cache(mix_env, remote_branch, zip_password, cache_backend)
+
+      IO.puts("✅ Build cache uploaded. Thank you for taking the time!")
     end
   end
 
@@ -104,6 +126,15 @@ defmodule ExCompilationCache do
 
   @doc """
   This function checks if there is a compilation cache for an "upstream" commit that also belongs to the current local branch.
+
+  Example:
+
+  Upstream branch has: commits `C4(HEAD)<-C3<-C2<-C1<-(...)`
+  Local branch has: `X3(HEAD)<-X2<-X1<-C4<-C3<-C2<-C1<-(...)`
+
+  No one uploaded a cached build for `C4` yet. Only `C3` and `C2` commits have a build cache.
+
+  `cached_build?/3` will return `true` since it finds `C3` in the local branch as the latest commit that is also present in the upstream with a build cache.
 
   Use it like this:
 
