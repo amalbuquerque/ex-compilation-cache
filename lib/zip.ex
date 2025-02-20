@@ -5,25 +5,23 @@ defmodule ExCompilationCache.Zip do
 
   require Logger
 
-  # note that we don't try to compress any file to speed up compress/decompress time
-  @zip_args ~w[<archive_file_path> --password <password> -r <folder_path> --quiet -0]
-  @unzip_args ~w[-P <password> -qq -o <archive_file_path> -d <target_path>]
+  # note that we don't try to compress any file to speed up compress/decompress time, see the `-0` flag
+  @zip_args ~w[<archive_file_path> -r <folder_path> --quiet -0]
+  @unzip_args ~w[-qq -o <archive_file_path> -d <target_path>]
 
   @doc """
   Use it like this:
 
   ```
+  ExCompilationCache.Zip.zip_directory("foo/bar", "foo_bar.zip")
   ExCompilationCache.Zip.zip_directory("_build/dev", "dev_cache.zip", "12345")
   ```
   """
-  def zip_directory(folder_path, archive_file_path, password) do
+  def zip_directory(folder_path, archive_file_path, password \\ nil) do
     archive_file_path = maybe_add_zip_extension(archive_file_path)
 
     args =
       Enum.map(@zip_args, fn
-        "<password>" ->
-          password
-
         "<archive_file_path>" ->
           archive_file_path
 
@@ -33,6 +31,8 @@ defmodule ExCompilationCache.Zip do
         arg ->
           arg
       end)
+
+    args = maybe_set_zip_password(args, password)
 
     ensure_file_exists!(folder_path, "Folder to zip")
 
@@ -47,20 +47,20 @@ defmodule ExCompilationCache.Zip do
     end
   end
 
+  defp maybe_set_zip_password(args, _password = nil), do: args
+  defp maybe_set_zip_password(args, password), do: args ++ ["--password", password]
+
   @doc """
   Use it like this:
 
   ```
-  ExCompilationCache.Zip.unzip_to("dev_cache.zip", "temp/foo", "12345")
+  ExCompilationCache.Zip.unzip_to("dev_cache.zip", "temp/foo")
   ExCompilationCache.Zip.unzip_to("dev_cache.zip", ".", "12345")
   ```
   """
-  def unzip_to(archive_file_path, target_path, password) do
+  def unzip_to(archive_file_path, target_path, password \\ nil) do
     args =
       Enum.map(@unzip_args, fn
-        "<password>" ->
-          password
-
         "<archive_file_path>" ->
           maybe_add_zip_extension(archive_file_path)
 
@@ -70,6 +70,8 @@ defmodule ExCompilationCache.Zip do
         arg ->
           arg
       end)
+
+    args = maybe_set_unzip_password(args, password)
 
     ensure_file_exists!(archive_file_path, "Archive to unzip")
     ensure_file_exists!(target_path, "Target folder")
@@ -82,6 +84,9 @@ defmodule ExCompilationCache.Zip do
         {:error, {:command_failed, error_exit_status}}
     end
   end
+
+  defp maybe_set_unzip_password(args, _password = nil), do: args
+  defp maybe_set_unzip_password(args, password), do: ["-P", password] ++ args
 
   defp ensure_file_exists!(file_path, description) do
     unless File.exists?(file_path) do

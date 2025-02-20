@@ -41,7 +41,7 @@ defmodule Mix.Tasks.Maybe.Compile do
     %{
       mix_env: mix_env!(parsed_args),
       remote_branch: remote_branch!(parsed_args),
-      zip_password: parsed_args[:zip_password] || "",
+      zip_password: parsed_args[:zip_password],
       cache_backend: cache_backend!(parsed_args),
       log_level: log_level!(parsed_args)
     }
