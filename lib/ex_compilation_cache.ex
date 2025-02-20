@@ -25,7 +25,7 @@ defmodule ExCompilationCache do
     cached_build? = cached_build?(mix_env, remote_branch, cache_backend)
 
     if force or not cached_build? do
-      IO.puts("👷🏗️ Will compile the code and upload a new build cache...")
+      IO.puts("👷🏗️ Will compile the code and upload a new build cache... (force=#{force})")
 
       compile_and_upload(mix_env, remote_branch, zip_password, cache_backend)
     else
@@ -42,13 +42,14 @@ defmodule ExCompilationCache do
   end
 
   defp compile do
-    case Mix.Task.run("compile") do
-      {:ok, files} ->
-        IO.puts("🏗️ Compiled #{length(files)} files.")
+    # Task.run/1 will only run once, following executions will return :noop
+    case Mix.Task.rerun("compile") do
+      {:ok, _} ->
+        IO.puts("🏁 Compilation finished")
 
         :ok
 
-      :noop ->
+      {:noop, _} ->
         IO.puts("Nothing to do 😎")
 
         :noop
@@ -148,9 +149,9 @@ defmodule ExCompilationCache do
            Git.latest_commit_also_present_in_remote(remote_branch),
          local_artifact = BuildCache.new(mix_env, commit_hash),
          :ok <- cache_backend.setup_before(),
-         {:ok, _remote_artifact} <- cache_backend.fetch_cache_artifact(local_artifact) do
+         {:ok, remote_artifact} <- cache_backend.fetch_cache_artifact(local_artifact) do
       IO.puts(
-        "🍏 There is a build cache for commit='#{commit_hash}' and '#{local_artifact.architecture}'"
+        "🍏 There is a build cache for commit='#{commit_hash}' and '#{remote_artifact.architecture}', #{remote_artifact}"
       )
 
       true

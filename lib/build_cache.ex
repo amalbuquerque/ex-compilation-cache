@@ -142,3 +142,9 @@ defmodule ExCompilationCache.BuildCache do
     end
   end
 end
+
+defimpl String.Chars, for: ExCompilationCache.BuildCache do
+  def to_string(build_cache) do
+    "BuildCache: #{build_cache.architecture}|#{build_cache.operating_system}, #{String.slice(build_cache.commit_hash, 0..7)}, compiled at #{build_cache.timestamp}"
+  end
+end
