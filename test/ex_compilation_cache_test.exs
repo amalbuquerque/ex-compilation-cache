@@ -2,19 +2,23 @@ defmodule ExCompilationCacheTest do
   use ExUnit.Case
   doctest ExCompilationCache
 
-  test "create_build_cache" do
-    assert ExCompilationCache.create_build_cache() == :TODO
+  @tag :skip
+  test "download_cache_or_compile_and_upload/4" do
   end
 
-  test "current_code_matches_upstream_commit?" do
-    assert ExCompilationCache.current_code_matches_upstream_commit?() == :TODO
+  @tag :skip
+  test "create_and_upload_build_cache/4" do
   end
 
-  test "cached_build?" do
-    assert ExCompilationCache.cached_build?() == :TODO
+  @tag :skip
+  test "current_code_includes_upstream_commit?/1" do
   end
 
-  test "download_and_apply_cached_build" do
-    assert ExCompilationCache.download_and_apply_cached_build() == :TODO
+  @tag :skip
+  test "cached_build?/3" do
+  end
+
+  @tag :skip
+  test "download_and_apply_cached_build/4" do
   end
 end

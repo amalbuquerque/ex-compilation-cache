@@ -62,6 +62,8 @@ defmodule ExCompilationCache.GitTest do
       local-branch
       """
 
+      expect_git_rev_list_count()
+
       0..3
       |> Enum.map(&"HEAD~#{&1}")
       |> expect_branches(list_of_branches_with_commit)
@@ -83,6 +85,8 @@ defmodule ExCompilationCache.GitTest do
     end
 
     test "it only checks the number of commits passed" do
+      expect_git_rev_list_count()
+
       # the first 3 commits are not present in any remote branch
       0..2
       |> Enum.map(&"HEAD~#{&1}")
@@ -107,6 +111,8 @@ defmodule ExCompilationCache.GitTest do
       remotes/origin/quxbaz
       """
 
+      expect_git_rev_list_count()
+
       expect_branches(["HEAD~0", "HEAD~1"], list_of_branches_with_commit)
 
       # checking only the last 2 commits
@@ -122,6 +128,8 @@ defmodule ExCompilationCache.GitTest do
       remotes/origin/foobar
       remotes/origin/main
       """
+
+      expect_git_rev_list_count()
 
       0..4
       |> Enum.map(&"HEAD~#{&1}")
@@ -209,6 +217,12 @@ defmodule ExCompilationCache.GitTest do
           {"local-branch", 0}
         end
       end)
+    end)
+  end
+
+  defp expect_git_rev_list_count() do
+    expect(System, :cmd, fn "git", ["rev-list", "--count", "HEAD"] ->
+      {_number_of_commits_str = "42", 0}
     end)
   end
 end
