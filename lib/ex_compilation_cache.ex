@@ -21,7 +21,13 @@ defmodule ExCompilationCache do
 
   If `force` is true, it will force the local compilation and upload, even if there is a cached build that can be used.
   """
-  def download_cache_or_compile_and_upload(mix_env, remote_branch, zip_password, cache_backend, force) do
+  def download_cache_or_compile_and_upload(
+        mix_env,
+        remote_branch,
+        zip_password,
+        cache_backend,
+        force
+      ) do
     cached_build? = cached_build?(mix_env, remote_branch, cache_backend)
 
     if force or not cached_build? do
@@ -31,9 +37,12 @@ defmodule ExCompilationCache do
     else
       IO.puts("👷🚛 Downloading the build cache...")
 
-      download_and_apply_cached_build(mix_env, remote_branch, zip_password, cache_backend)
+      {fetch_download_time_ms, unzip_time_ms, _result} =
+        download_and_apply_cached_build(mix_env, remote_branch, zip_password, cache_backend)
 
-      IO.puts("✅ Build cache downloaded and put in place 🌈 Will compile the diff between local code and build cache")
+      IO.puts(
+        "✅ Build cache downloaded and put in place (took #{fetch_download_time_ms / 1000} secs for download, #{unzip_time_ms / 1000} secs for unzip) 🌈\nWill now compile the diff between local code and build cache"
+      )
 
       compile()
 
@@ -42,20 +51,24 @@ defmodule ExCompilationCache do
   end
 
   defp compile do
-    # Task.run/1 will only run once, following executions will return :noop
-    case Mix.Task.rerun("compile") do
+    # Task.run/1 will only run once, following executions will return :noop, hence the usage of rerun/1 to *always* execute the given task
+    {elapsed_msg, result} = timed_exec(fn -> Mix.Task.rerun("compile") end)
+
+    case result do
       {:ok, _} ->
-        IO.puts("🏁 Compilation finished")
+        IO.puts("🏁 Compilation finished #{elapsed_msg}")
 
         :ok
 
       {:noop, _} ->
-        IO.puts("Nothing to do 😎")
+        IO.puts("Nothing to compile 😎 #{elapsed_msg}")
 
         :noop
 
       compilation_result ->
-        IO.puts("Compilation failed! (compilation result=#{inspect(compilation_result)})")
+        IO.puts(
+          "Compilation failed #{elapsed_msg}! Compilation result:\n#{inspect(compilation_result)}"
+        )
 
         compilation_result
     end
@@ -63,9 +76,14 @@ defmodule ExCompilationCache do
 
   defp compile_and_upload(mix_env, remote_branch, zip_password, cache_backend) do
     if compile() in [:ok, :noop] do
-      create_and_upload_build_cache(mix_env, remote_branch, zip_password, cache_backend)
+      {timed_elapsed_msg, result} =
+        timed_exec(fn ->
+          create_and_upload_build_cache(mix_env, remote_branch, zip_password, cache_backend)
+        end)
 
-      IO.puts("✅ Build cache uploaded. Thank you for taking the time!")
+      IO.puts("✅ Build cache zipped and uploaded #{timed_elapsed_msg}. Thank you for taking the time!")
+
+      result
     end
   end
 
@@ -175,6 +193,7 @@ defmodule ExCompilationCache do
            Git.latest_commit_also_present_in_remote(remote_branch),
          local_artifact = BuildCache.new(mix_env, commit_hash),
          :ok <- cache_backend.setup_before(),
+         before_fetch_artifact = now_milliseconds(),
          {:ok, remote_artifact} <- cache_backend.fetch_cache_artifact(local_artifact),
          remote_artifact_path = BuildCache.remote_artifact_path(remote_artifact, :zip),
          :ok = File.mkdir_p("_build"),
@@ -182,12 +201,21 @@ defmodule ExCompilationCache do
          local_artifact_path = Path.join("_build", artifact_name),
          {:ok, _} <-
            cache_backend.download_cache_artifact(remote_artifact_path, local_artifact_path) do
+      fetch_and_download_elapsed_time_ms = now_milliseconds() - before_fetch_artifact
+
       # unzip to . since zip has _build/<mix_env> folder structure
-      result = Zip.unzip_to(local_artifact_path, ".", zip_password)
+      {unzip_elapsed_time_ms, result} =
+        :timer.tc(
+          fn ->
+            unzip_result = Zip.unzip_to(local_artifact_path, ".", zip_password)
+            delete_file(local_artifact_path)
 
-      delete_file(local_artifact_path)
+            unzip_result
+          end,
+          :millisecond
+        )
 
-      result
+      {fetch_and_download_elapsed_time_ms, unzip_elapsed_time_ms, result}
     end
   end
 
@@ -208,4 +236,14 @@ defmodule ExCompilationCache do
   defp delete_file(file_path) do
     System.cmd("rm", ~w[-rf #{file_path}])
   end
+
+  defp timed_exec(fun_to_exec) do
+    {elapsed_time_ms, result} = :timer.tc(fun_to_exec, :millisecond)
+
+    elapsed_msg = "(took #{elapsed_time_ms / 1000} seconds)"
+
+    {elapsed_msg, result}
+  end
+
+  defp now_milliseconds, do: :erlang.monotonic_time(:millisecond)
 end
