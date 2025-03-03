@@ -63,11 +63,11 @@ defmodule ExCompilationCache.Git do
   end
 
   @doc """
-  It will return the latest 50 commits (max) from a given commit.
+  It will return the latest 100 commits (max) from a given commit.
 
   It relies on the output of `git log --oneline --graph --no-abbrev-commit <commit>~<number_of_commits>..<commit>`, and returns all commits in the graph starting with `*`.
   """
-  def commit_list(latest_commit, number_of_commits_max \\ 50) do
+  def commit_list(latest_commit, number_of_commits_max \\ 100) do
     number_of_commits = min(number_of_commits_max, number_of_commits_branch(latest_commit)) - 1
 
     args =
