@@ -4,10 +4,13 @@ defmodule ExCompilationCache.Git do
   it will associate the compilation "snapshot".
   """
 
+  require Logger
+
   @current_changes_args ~w[ls-files --others --modified --deleted --exclude-standard -t]
   @latest_commit_args ~w[show HEAD --pretty=oneline --no-abbrev-commit]
+  @commit_list_args ~w[log --oneline --graph --no-abbrev-commit <range>]
   @branches_for_commit_args ~w[branch -a --contains <commit>]
-  @number_of_commits_args ~w[rev-list --count HEAD]
+  @number_of_commits_args ~w[rev-list --count <commit>]
 
   @type commit :: String.t()
   @type branch :: String.t()
@@ -60,8 +63,57 @@ defmodule ExCompilationCache.Git do
   end
 
   @doc """
-  It will check the latest 200 commits (max) and return the first commit (starting from HEAD) which also exists in the remote
+  It will return the latest 50 commits (max) from a given commit.
+
+  It relies on the output of `git log --oneline --graph --no-abbrev-commit <commit>~<number_of_commits>..<commit>`, and returns all commits in the graph starting with `*`.
+  """
+  def commit_list(latest_commit, number_of_commits_max \\ 50) do
+    number_of_commits = min(number_of_commits_max, number_of_commits_branch(latest_commit)) - 1
+
+    args =
+      Enum.map(@commit_list_args, fn
+        "<range>" ->
+          "#{latest_commit}~#{number_of_commits}..#{latest_commit}"
+
+        arg ->
+          arg
+      end)
+
+    {output, 0} = System.cmd("git", args)
+
+    output
+    |> String.split("\n", trim: true)
+    |> Enum.flat_map(fn
+      "" ->
+        []
+
+      "*" <> _ = commit_line ->
+        commit = extract_commit_from_list_line(commit_line)
+
+        if is_nil(commit) do
+          Logger.warning("Problem extracting commit from: #{commit_line}")
+          []
+        else
+          [commit]
+        end
+
+      _ ->
+        []
+    end)
+  end
+
+  defp extract_commit_from_list_line(commit_line) do
+    captures =
+      Regex.named_captures(~r/(?<prefix>[*|\/_\ ]+)(?<commit>[[:xdigit:]]+) .+/, commit_line)
+
+    get_in(captures, ["commit"])
+  end
+
+  @doc """
+  It will check the latest 200 commits (max) and return the most recent commit (starting from HEAD) which also exists in the remote
   branch (usually `origin/main` or `origin/master`).
+
+  It can be used to identify the first commit from which we should check if cache artifacts are available.
 
   Use it like this:
 
@@ -78,13 +130,17 @@ defmodule ExCompilationCache.Git do
       ) do
     full_remote_branch_name = "remotes/#{remote_branch_name}"
 
-    number_of_commits = min(number_of_commits_max, number_of_commits_current_branch())
+    number_of_commits = min(number_of_commits_max, number_of_commits_branch("HEAD"))
 
     result =
       Enum.reduce_while(0..(number_of_commits - 1), nil, fn commit_number, _acc ->
         commit_reference = "HEAD~#{commit_number}"
 
         branches = branches(commit_reference)
+
+        Logger.debug(
+          "Checking branches of '#{commit_reference}' for '#{full_remote_branch_name}': #{inspect(branches)}"
+        )
 
         if full_remote_branch_name in branches do
           {:halt, {commit_hash(commit_reference), branches}}
@@ -183,8 +239,17 @@ defmodule ExCompilationCache.Git do
     commit
   end
 
-  def number_of_commits_current_branch do
-    {number_of_commits_str, 0} = System.cmd("git", @number_of_commits_args)
+  def number_of_commits_branch(current_commit) do
+    args =
+      Enum.map(@number_of_commits_args, fn
+        "<commit>" ->
+          current_commit
+
+        arg ->
+          arg
+      end)
+
+    {number_of_commits_str, 0} = System.cmd("git", args)
 
     {number_of_commits, ""} =
       number_of_commits_str

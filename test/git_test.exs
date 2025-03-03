@@ -54,6 +54,73 @@ defmodule ExCompilationCache.GitTest do
     end
   end
 
+  describe "commit_list/2" do
+    test "it returns simple commits (no merge commits)" do
+      latest_commit = "HEAD"
+      number_of_commits = 3
+
+      expect_git_rev_list_count(number_of_commits)
+
+      expect(System, :cmd, fn "git",
+                              ["log", "--oneline", "--graph", "--no-abbrev-commit", commit_range] ->
+        assert commit_range == "#{latest_commit}~#{number_of_commits - 1}..#{latest_commit}"
+
+        output =
+          "test/support/git_log_oneline_graph_example"
+          |> File.read!()
+          |> only_first_lines(number_of_commits)
+
+        {output, 0}
+      end)
+
+      assert commit_list = Git.commit_list(latest_commit)
+
+      # we get the first 3 simple example commits
+      assert [
+               "ad2498bb16c05a80308dd1fab9ca86bea35144df",
+               "eee4c8407e59d97c41f4a601380e556a2824098e",
+               "017cccb54cf1eb0189c6c6f5754249dfd211d0f2"
+             ] == commit_list
+    end
+
+    test "it also returns merge commits" do
+      latest_commit = "HEAD"
+      max_number_of_commits = 16
+
+      expect_git_rev_list_count(max_number_of_commits)
+
+      expect(System, :cmd, fn "git",
+                              ["log", "--oneline", "--graph", "--no-abbrev-commit", commit_range] ->
+        assert commit_range == "#{latest_commit}~#{max_number_of_commits - 1}..#{latest_commit}"
+
+        # the first 16 commits occupy 25 lines of the graph (only 10 are merge or simple commits)
+        output =
+          "test/support/git_log_oneline_graph_example"
+          |> File.read!()
+          |> only_first_lines(25)
+
+        {output, 0}
+      end)
+
+      assert commit_list = Git.commit_list(latest_commit)
+
+      assert [
+               # we get the first 3 simple example commits
+               "ad2498bb16c05a80308dd1fab9ca86bea35144df",
+               "eee4c8407e59d97c41f4a601380e556a2824098e",
+               "017cccb54cf1eb0189c6c6f5754249dfd211d0f2",
+               # we only get 7 merge commits (it excludes the other commits shown in the graph)
+               "eeedf35011dec8590a77bac2cad8ddc76cd5e2b0",
+               "af1e30fefa12a43ef1fc1843daa714307e29835a",
+               "b2aec75a3dc2fe3c38b4353b99262e853033c9e5",
+               "201f5f6154cf037711a9b75f5486c48457559eed",
+               "c2c82e832e56646fa9d1bc3965a959b6f89424d0",
+               "cb0fa613a1f02e9bb619377776e60fcf7b8e6680",
+               "a24d3328e776ea38f6584fa77c696543d1b5983f"
+             ] == commit_list
+    end
+  end
+
   describe "latest_commit_also_present_in_remote/2" do
     test "it returns the local commit also present in the remote branch" do
       # the HEAD~3 commit is contained in the following branches
@@ -220,9 +287,21 @@ defmodule ExCompilationCache.GitTest do
     end)
   end
 
-  defp expect_git_rev_list_count() do
+  defp expect_git_rev_list_count(number_of_commits \\ 42) do
     expect(System, :cmd, fn "git", ["rev-list", "--count", "HEAD"] ->
-      {_number_of_commits_str = "42", 0}
+      number_of_commits_str = to_string(number_of_commits)
+
+      {number_of_commits_str, 0}
     end)
+  end
+
+  defp only_first_lines(file_content, number_of_lines) do
+    file_content
+    |> String.split("\n", trim: true)
+    |> Enum.with_index(1)
+    |> Enum.filter(fn {_line, index} -> index <= number_of_lines end)
+    |> Enum.map(fn {line, _index} -> line end)
+    |> Enum.join("\n")
+    |> Kernel.<>("\n")
   end
 end
