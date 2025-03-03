@@ -38,7 +38,7 @@ defmodule ExCompilationCache do
     else
       IO.puts("👷🚛 Downloading the build cache...")
 
-      {:ok, remote_artifact} = cached_build_result
+      {:ok, {remote_artifact, latest_commit_hash}} = cached_build_result
 
       %{
         fetch_elapsed_time_ms: fetch_time_ms,
@@ -59,11 +59,16 @@ defmodule ExCompilationCache do
 
       IO.puts("👷🏗️ Will now compile the diff between local code and build cache...")
 
-      compile()
+      # :ok means there was a diff that had to be compiled, but it can just be about local branch changes
+      compile_result = compile()
 
-      IO.puts("👷🏗️ Creating a new cache to upload 🚀")
+      should_upload_new_cache? = remote_artifact.commit_hash != latest_commit_hash
 
-      create_and_upload_build_cache(mix_env, remote_branch, zip_password, cache_backend)
+      if compile_result == :ok and should_upload_new_cache? do
+        IO.puts("👷🏗️ Creating a new cache to upload 🚀")
+
+        create_and_upload_build_cache(mix_env, remote_branch, zip_password, cache_backend)
+      end
 
       :ok
     end
@@ -175,8 +180,9 @@ defmodule ExCompilationCache do
 
   No one uploaded a cached build for `C4` yet. Only `C3` and `C2` commits have a build cache (both have an `*`).
 
-  In this example, `cached_build/3` will return an `{:ok, %BuildCache{}}` since it finds `C3` in the local branch as
-  the latest commit that is also present in the upstream for which there is a build cache.
+  In this example, `cached_build/3` will return an `{:ok, {%BuildCache{}, "<latest_commit_present_in_remote>"}}` since
+  it finds `C3` in the local branch as the latest commit that is also present in the upstream for which
+  there is a build cache.
 
   Use it like this:
 
@@ -186,16 +192,16 @@ defmodule ExCompilationCache do
   """
   def cached_build(mix_env, remote_branch, cache_backend) do
     with true <- current_code_includes_upstream_commit?(remote_branch),
-         {:ok, {commit_hash, _branches}} <-
+         {:ok, {latest_commit_hash, _branches}} <-
            Git.latest_commit_also_present_in_remote(remote_branch),
-         Logger.debug("Latest local commit present in remote branch: #{commit_hash}"),
+         Logger.debug("Latest local commit present in remote branch: #{latest_commit_hash}"),
          {:ok, remote_artifact} <-
-           latest_available_build_cache(commit_hash, mix_env, cache_backend) do
+           latest_available_build_cache(latest_commit_hash, mix_env, cache_backend) do
       IO.puts(
-        "🍏 There is a build cache for commit='#{commit_hash}' and '#{remote_artifact.architecture}', #{remote_artifact}"
+        "🍏 There is a build cache for commit='#{latest_commit_hash}' and '#{remote_artifact.architecture}': #{remote_artifact}"
       )
 
-      {:ok, remote_artifact}
+      {:ok, {remote_artifact, latest_commit_hash}}
     else
       {:error, reason} ->
         IO.puts("🙅 No build cache available (reason=#{inspect(reason)})")
@@ -247,14 +253,14 @@ defmodule ExCompilationCache do
       ) do
     cached_build_fn = fn remote_artifact ->
       if remote_artifact do
-        {:ok, remote_artifact}
+        {:ok, {remote_artifact, :dummy_commit_hash}}
       else
         cached_build(mix_env, remote_branch, cache_backend)
       end
     end
 
     with before_fetch_artifact = now_milliseconds(),
-         {:ok, remote_artifact} <- cached_build_fn.(remote_artifact),
+         {:ok, {remote_artifact, _latest_commit_hash}} <- cached_build_fn.(remote_artifact),
          remote_artifact_path = BuildCache.remote_artifact_path(remote_artifact, :zip),
          :ok = File.mkdir_p("_build"),
          artifact_name = BuildCache.artifact_name(remote_artifact, :zip),
