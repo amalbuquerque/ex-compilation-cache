@@ -208,7 +208,7 @@ defmodule ExCompilationCache do
     commits_to_check = Git.commit_list(latest_commit)
 
     with :ok <- cache_backend.setup_before() do
-      Enum.reduce_while(commits_to_check, nil, fn commit_hash, acc ->
+      Enum.reduce_while(commits_to_check, {:error, :build_cache_not_found}, fn commit_hash, acc ->
         temp_artifact = BuildCache.new(mix_env, commit_hash)
 
         Logger.debug("Checking if '#{commit_hash}' has a cached build...")
