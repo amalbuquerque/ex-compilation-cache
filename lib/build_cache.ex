@@ -128,9 +128,9 @@ defmodule ExCompilationCache.BuildCache do
   """
   def equivalent?(%__MODULE__{} = build_cache_1, %__MODULE__{} = build_cache_2) do
     build_cache_1.architecture == build_cache_2.architecture and
-    build_cache_1.operating_system == build_cache_2.operating_system and
-    build_cache_1.mix_env == build_cache_2.mix_env and
-    build_cache_1.commit_hash == build_cache_2.commit_hash
+      build_cache_1.operating_system == build_cache_2.operating_system and
+      build_cache_1.mix_env == build_cache_2.mix_env and
+      build_cache_1.commit_hash == build_cache_2.commit_hash
   end
 
   # to simplify, we assume that only Linux laptops use x86_64, since
