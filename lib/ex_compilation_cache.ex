@@ -206,6 +206,8 @@ defmodule ExCompilationCache do
   ```
   """
   def cached_build(mix_env, remote_branch, cache_backend) do
+    IO.puts("🔍👀 Checking if there is a build cache available...")
+
     with true <- current_code_includes_upstream_commit?(remote_branch),
          {:ok, {latest_commit_hash, _branches}} <-
            Git.latest_commit_also_present_in_remote(remote_branch),
@@ -228,14 +230,15 @@ defmodule ExCompilationCache do
   defp latest_available_build_cache(latest_commit, mix_env, cache_backend) do
     commits_to_check = Git.commit_list(latest_commit)
 
-    with :ok <- cache_backend.setup_before() do
+    with :ok <- cache_backend.setup_before(),
+         {:ok, all_cache_artifacts} <- cache_backend.list_cache_artifacts() do
       Enum.reduce_while(commits_to_check, {:error, :build_cache_not_found}, fn commit_hash, acc ->
-        temp_artifact = BuildCache.new(mix_env, commit_hash)
-
         Logger.debug("Checking if '#{commit_hash}' has a cached build...")
 
-        case cache_backend.fetch_cache_artifact(temp_artifact) do
-          {:ok, remote_artifact} ->
+        temp_artifact = BuildCache.new(mix_env, commit_hash)
+
+        case Enum.find(all_cache_artifacts, &BuildCache.equivalent?(&1, temp_artifact)) do
+          %BuildCache{} = remote_artifact ->
             Logger.debug("Found a cached build for: #{remote_artifact} 🌈")
 
             {:halt, {:ok, remote_artifact}}

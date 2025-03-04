@@ -45,4 +45,11 @@ defmodule ExCompilationCache.Behaviours.CacheBackend do
   """
   @callback fetch_cache_artifact(local_artifact :: BuildCache.t()) ::
               {:ok, BuildCache.t()} | {:error, :remote_cache_artifact_not_found}
+
+  @doc """
+  Function that returns all cache artifacts that are remotely available.
+
+  Receives the current `mix_env` to filter the available cache artifacts by it, along with the current architecture.
+  """
+  @callback list_cache_artifacts(mix_env :: atom()) :: {:ok, [BuildCache.t()]} | {:error, term()}
 end

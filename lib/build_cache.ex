@@ -121,6 +121,18 @@ defmodule ExCompilationCache.BuildCache do
     )
   end
 
+  @doc """
+  Returns `true` if both BuildCaches are for the same architecture, Mix environment and commit hash.
+
+  Otherwise returns `false`.
+  """
+  def equivalent?(%__MODULE__{} = build_cache_1, %__MODULE__{} = build_cache_2) do
+    build_cache_1.architecture == build_cache_2.architecture and
+    build_cache_1.operating_system == build_cache_2.operating_system and
+    build_cache_1.mix_env == build_cache_2.mix_env and
+    build_cache_1.commit_hash == build_cache_2.commit_hash
+  end
+
   # to simplify, we assume that only Linux laptops use x86_64, since
   # we're replacing all Intel Macs by new Macs with Apple silicon
   defp current_architecture do
