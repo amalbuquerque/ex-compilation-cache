@@ -38,7 +38,7 @@ defmodule ExCompilationCache do
     else
       IO.puts("👷🚛 Downloading the build cache...")
 
-      {:ok, {remote_artifact, latest_commit_hash}} = cached_build_result
+      {remote_artifact, latest_commit_hash} = cached_build_result
 
       %{
         fetch_elapsed_time_ms: fetch_time_ms,
