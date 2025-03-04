@@ -28,10 +28,10 @@ defmodule ExCompilationCache do
         cache_backend,
         force
       ) do
-    cached_build_result = cached_build(mix_env, remote_branch, cache_backend)
-    cached_build? = match?({:ok, _}, cached_build_result)
+    {should_compile_and_upload?, cached_build_result} =
+      should_compile_and_upload(force, mix_env, remote_branch, cache_backend)
 
-    if force or not cached_build? do
+    if should_compile_and_upload? do
       IO.puts("👷🏗️ Will compile the code and upload a new build cache... (force=#{force})")
 
       compile_and_upload(mix_env, remote_branch, zip_password, cache_backend)
@@ -71,6 +71,21 @@ defmodule ExCompilationCache do
       end
 
       :ok
+    end
+  end
+
+  defp should_compile_and_upload(_force = true, _mix_env, _remote_branch, _cache_backend),
+    do: {true, :noop}
+
+  defp should_compile_and_upload(_force = false, mix_env, remote_branch, cache_backend) do
+    case cached_build(mix_env, remote_branch, cache_backend) do
+      {:ok, {remote_artifact, latest_commit_hash}} ->
+        # there's a cached build, it shouldn't compile and upload
+        {false, {remote_artifact, latest_commit_hash}}
+
+      _ ->
+        # no cached build, compile and upload is needed
+        {true, :no_cached_build_available}
     end
   end
 
