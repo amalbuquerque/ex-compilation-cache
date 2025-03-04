@@ -15,6 +15,8 @@ defmodule ExCompilationCache.Git do
   @type commit :: String.t()
   @type branch :: String.t()
 
+  @max_number_of_commits_to_consider 200
+
   @doc """
   Use it like this:
 
@@ -63,11 +65,11 @@ defmodule ExCompilationCache.Git do
   end
 
   @doc """
-  It will return the latest 100 commits (max) from a given commit.
+  It will return the latest 200 commits (max) from a given commit.
 
   It relies on the output of `git log --oneline --graph --no-abbrev-commit <commit>~<number_of_commits>..<commit>`, and returns all commits in the graph starting with `*`.
   """
-  def commit_list(latest_commit, number_of_commits_max \\ 100) do
+  def commit_list(latest_commit, number_of_commits_max \\ @max_number_of_commits_to_consider) do
     number_of_commits = min(number_of_commits_max, number_of_commits_branch(latest_commit)) - 1
 
     args =
@@ -126,7 +128,7 @@ defmodule ExCompilationCache.Git do
           {:ok, {commit(), [branch()]}} | {:error, :origin_commit_not_found}
   def latest_commit_also_present_in_remote(
         remote_branch_name \\ "origin/main",
-        number_of_commits_max \\ 200
+        number_of_commits_max \\ @max_number_of_commits_to_consider
       ) do
     full_remote_branch_name = "remotes/#{remote_branch_name}"
 
